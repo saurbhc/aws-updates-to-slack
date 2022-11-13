@@ -41,6 +41,9 @@ class SlackProgress(object):
         content = '\n'.join(content)
         self.slack.chat_update(channel=chan, ts=msg_ts, text=content)
 
+    def _reply_in_thread(self, chan, msg_ts, msg_log):
+        self.slack.chat_postMessage(channel=chan, text=msg_log, thread_ts=msg_ts, as_user=True)
+
     def _makebar(self, pos):
         bar = (round(pos / 5) * chr(9608))
         return '{} {}{}'.format(bar, pos, self.suffix)
@@ -81,6 +84,9 @@ class ProgressBar(object):
         timestamp = time.strftime('%X')  # returns HH:MM:SS time
         self._msg_log.append('*{}* - [{}]'.format(timestamp, msg))
         self._update()
+
+    def log_thread(self, msg):
+        self._sp._reply_in_thread(self.channel_id, self.msg_ts, msg)
 
     def _update(self):
         self._sp._update(self.channel_id, self.msg_ts, self._pos, self._msg_log)

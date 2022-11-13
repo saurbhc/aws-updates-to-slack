@@ -3,6 +3,7 @@ from collections import OrderedDict
 from datetime import datetime
 import json
 import time
+import urllib.parse
 
 import boto3
 
@@ -14,6 +15,7 @@ def main(args: argparse.Namespace) -> None:
     channel_name = args.channel_name
     project_name = args.project_name
     iam_slack_usernames_mapping = args.iam_slack_usernames_mapping
+    aws_region = args.aws_region
 
     codebuild_client = boto3.client('codebuild')
 
@@ -21,6 +23,7 @@ def main(args: argparse.Namespace) -> None:
     sts_client = boto3.client('sts')
     response = sts_client.get_caller_identity()
     iam_username = response['Arn'].partition('/')[-1]
+    iam_account_id = response['Account']
     if iam_slack_usernames_mapping.get(iam_username):
         iam_username_log_message = f"<@{iam_slack_usernames_mapping[iam_username]}>"
     else:
@@ -77,7 +80,7 @@ def main(args: argparse.Namespace) -> None:
             break
 
         current_build_phases = build_response_data["builds"][0]["phases"]
-        for index, (_build_phase, _is_build_phase_updated_in_slack) in enumerate(list(build_phases_updated_in_slack_mapping.items()), start=1):
+        for _, (_build_phase, _is_build_phase_updated_in_slack) in enumerate(list(build_phases_updated_in_slack_mapping.items()), start=1):
             if _is_build_phase_updated_in_slack:
                 continue
 
@@ -109,6 +112,10 @@ def main(args: argparse.Namespace) -> None:
             pbar.log(log_message)
             build_phases_updated_in_slack_mapping[_build_phase] = True
 
+    build_id_url_encoded = urllib.parse.quote_plus(build_id)
+    code_build_console_link = f"https://{aws_region}.console.aws.amazon.com/codesuite/codebuild/{iam_account_id}/projects/{project_name}/build/{build_id_url_encoded}/phase?region={aws_region}"
+    pbar.log_thread(f"{iam_username_log_message}, CodeDeploy *Completed!*\n\n{code_build_console_link}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -119,6 +126,7 @@ if __name__ == "__main__":
     parser.add_argument('--channel_name', type=str)
     parser.add_argument('--project_name', type=str)
     parser.add_argument('--iam_slack_usernames_mapping', default="{}", type=str)
+    parser.add_argument('--aws_region', type=str)
     args = parser.parse_args()
 
     main(args=args)
