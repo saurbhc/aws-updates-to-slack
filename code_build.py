@@ -38,7 +38,7 @@ def main(args: argparse.Namespace) -> None:
 
     # Initialize Slack ProgressBar here
     pbar = sp.new()
-    log_message = f"Build: {project_name} BuildStatus={build_status}!"
+    log_message = f"Build: *{project_name}* BuildStatus=`{build_status}`!"
     pbar.pos = current_percentage_int
     pbar.log(log_message)
 
@@ -55,7 +55,12 @@ def main(args: argparse.Namespace) -> None:
         if build_status != 'IN_PROGRESS':
             # break here and update slack finally.
             is_build_running = False
-            log_message = f"Build: {project_name} BuildStatus={build_status}!"
+            log_message = f"Build: *{project_name}* BuildStatus=`{build_status}`!"
+            if build_status == 'SUCCEEDED':
+                log_message_emoji = ":large_blue_circle:"
+            else:
+                log_message_emoji = ":red_circle:"
+            log_message += log_message_emoji
             pbar.pos = 100
             pbar.log(log_message)
             break
@@ -87,7 +92,7 @@ def main(args: argparse.Namespace) -> None:
                 break
 
             phase_type, phase_status = current_build_phase["phaseType"], current_build_phase["phaseStatus"]
-            log_message = f"Build's Phase: {phase_type} PhaseStatus={phase_status}"
+            log_message = f"Build's Phase: {phase_type}, PhaseStatus=*{phase_status}*"
             current_percentage_int += 100/len(build_phases_updated_in_slack_mapping.keys())
             pbar.pos = current_percentage_int
             pbar.log(log_message)
