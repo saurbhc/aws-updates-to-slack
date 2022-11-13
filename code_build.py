@@ -96,9 +96,8 @@ def main(args: argparse.Namespace) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        prog = 'aws-deployments-test',
-        description = 'Pushes updates to slack about a deployment',
-        epilog = 'test01'
+        prog='aws-deployments-test',
+        description='Pushes updates to slack about a CodeBuild'
     )
     parser.add_argument('--slack_token', type=str)
     parser.add_argument('--channel_name', type=str)
