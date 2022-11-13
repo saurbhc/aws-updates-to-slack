@@ -1,6 +1,7 @@
 import argparse
 from collections import OrderedDict
 from datetime import datetime
+import json
 import time
 
 import boto3
@@ -12,10 +13,20 @@ def main(args: argparse.Namespace) -> None:
     slack_token = args.slack_token
     channel_name = args.channel_name
     project_name = args.project_name
+    iam_slack_usernames_mapping = args.iam_slack_usernames_mapping
 
-    client = boto3.client('codebuild')
+    codebuild_client = boto3.client('codebuild')
 
-    build_response_data: dict = client.start_build(
+    iam_slack_usernames_mapping = json.loads(iam_slack_usernames_mapping)
+    sts_client = boto3.client('sts')
+    response = sts_client.get_caller_identity()
+    iam_username = response['Arn'].partition('/')[-1]
+    if iam_slack_usernames_mapping.get(iam_username):
+        iam_username_log_message = f"<@{iam_slack_usernames_mapping[iam_username]}>"
+    else:
+        iam_username_log_message = f"'AWS User {iam_username}'"
+
+    build_response_data: dict = codebuild_client.start_build(
         projectName=project_name,
     )
     build_id = build_response_data["build"]["id"]
@@ -38,7 +49,7 @@ def main(args: argparse.Namespace) -> None:
 
     # Initialize Slack ProgressBar here
     pbar = sp.new()
-    log_message = f"Build: *{project_name}* BuildStatus=`{build_status}`!"
+    log_message = f"Build: *{project_name}*, BuildStatus=`{build_status}`, Initiated by: {iam_username_log_message}"
     pbar.pos = current_percentage_int
     pbar.log(log_message)
 
@@ -47,7 +58,7 @@ def main(args: argparse.Namespace) -> None:
         print(f"Sleeping for 5 sec... {datetime.now()}")
         time.sleep(5)
 
-        build_response_data: dict = client.batch_get_builds(
+        build_response_data: dict = codebuild_client.batch_get_builds(
             ids=[build_id]
         )
 
@@ -55,7 +66,7 @@ def main(args: argparse.Namespace) -> None:
         if build_status != 'IN_PROGRESS':
             # break here and update slack finally.
             is_build_running = False
-            log_message = f"Build: *{project_name}* BuildStatus=`{build_status}`!"
+            log_message = f"Build: *{project_name}*, BuildStatus=`{build_status}`"
             if build_status == 'SUCCEEDED':
                 log_message_emoji = ":large_blue_circle:"
             else:
@@ -107,6 +118,7 @@ if __name__ == "__main__":
     parser.add_argument('--slack_token', type=str)
     parser.add_argument('--channel_name', type=str)
     parser.add_argument('--project_name', type=str)
+    parser.add_argument('--iam_slack_usernames_mapping', default="{}", type=str)
     args = parser.parse_args()
 
     main(args=args)
