@@ -9,7 +9,8 @@ class Slacker:
 
 
 class SlackProgress(object):
-    def __init__(self, token, channel, suffix='%'):
+    def __init__(self, token, channel, suffix='%', prefix=""):
+        self.prefix = prefix
         self.suffix = suffix
         self.channel = channel
         self.slack = Slacker(token).client
@@ -46,7 +47,7 @@ class SlackProgress(object):
 
     def _makebar(self, pos):
         bar = (round(pos / 5) * chr(9608))
-        return '{} {}{}'.format(bar, pos, self.suffix)
+        return '{} {} {}{}'.format(self.prefix, bar, pos, self.suffix)
 
 
 class ProgressBar(object):
