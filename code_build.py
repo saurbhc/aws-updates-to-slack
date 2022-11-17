@@ -34,21 +34,20 @@ def main(args: argparse.Namespace) -> None:
     )
     build_id = build_response_data["build"]["id"]
     build_status = build_response_data["build"]["buildStatus"]
+    build_phases = build_response_data["build"]["phases"]
+
+    # Create AWS CodeBuild Console URL
+    build_id_url_encoded = urllib.parse.quote_plus(build_id)
+    code_build_console_link = f"https://{aws_region}.console.aws.amazon.com/codesuite/codebuild/{iam_account_id}/projects/{project_name}/build/{build_id_url_encoded}/phase?region={aws_region}"
 
     # Initialize Slack here
-    sp = SlackProgress(token=slack_token, channel=channel_name)
+    prefix = f"<{code_build_console_link}|*CodeBuild: {project_name}*>"
+    sp = SlackProgress(token=slack_token, channel=channel_name, prefix=prefix)
     current_percentage_int = 0
 
-    build_phases_updated_in_slack_mapping = OrderedDict([
-        ("SUBMITTED", False),
-        ("QUEUED", False),
-        ("PROVISIONING", False),
-        ("DOWNLOAD_SOURCE", False),
-        ("INSTALL", False),
-        ("PRE_BUILD", False),
-        ("BUILD", False),
-        ("POST_BUILD", False),
-    ])
+    build_phases_updated_in_slack_mapping = OrderedDict()
+    for _start_build_phase in build_phases:
+        build_phases_updated_in_slack_mapping[_start_build_phase["phaseType"]] = False
 
     # Initialize Slack ProgressBar here
     pbar = sp.new()
@@ -80,6 +79,10 @@ def main(args: argparse.Namespace) -> None:
             break
 
         current_build_phases = build_response_data["builds"][0]["phases"]
+        for _cbp in current_build_phases:
+            if _cbp["phaseType"] not in build_phases_updated_in_slack_mapping:
+                build_phases_updated_in_slack_mapping[_cbp["phaseType"]] = False
+
         for _, (_build_phase, _is_build_phase_updated_in_slack) in enumerate(list(build_phases_updated_in_slack_mapping.items()), start=1):
             if _is_build_phase_updated_in_slack:
                 continue
@@ -107,14 +110,22 @@ def main(args: argparse.Namespace) -> None:
 
             phase_type, phase_status = current_build_phase["phaseType"], current_build_phase["phaseStatus"]
             log_message = f"Build's Phase: {phase_type}, PhaseStatus=*{phase_status}*"
-            current_percentage_int += 100/len(build_phases_updated_in_slack_mapping.keys())
+            current_percentage_int += round(100/11, 1)
             pbar.pos = current_percentage_int
             pbar.log(log_message)
             build_phases_updated_in_slack_mapping[_build_phase] = True
 
-    build_id_url_encoded = urllib.parse.quote_plus(build_id)
-    code_build_console_link = f"https://{aws_region}.console.aws.amazon.com/codesuite/codebuild/{iam_account_id}/projects/{project_name}/build/{build_id_url_encoded}/phase?region={aws_region}"
-    pbar.log_thread(f"{iam_username_log_message}, CodeDeploy *Completed!*\n\n{code_build_console_link}")
+    build_phases_contexts = ""
+    for current_build_phase in current_build_phases:
+        if not current_build_phase.get("contexts"):
+            continue
+
+        for context in current_build_phase.get("contexts"):
+            if context.get("message"):
+                build_phases_contexts += f"\n\nBuild's Phase: *{current_build_phase['phaseType']}* Context: `{context.get('message')}`."
+
+    log_message = f"{prefix} *{build_status}!* {iam_username_log_message} {build_phases_contexts}"
+    pbar.log_thread(log_message)
 
 
 if __name__ == "__main__":
