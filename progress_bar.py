@@ -9,11 +9,12 @@ class Slacker:
 
 
 class SlackProgress(object):
-    def __init__(self, token, channel, suffix='%', prefix=""):
+    def __init__(self, token, channel, suffix='%', prefix="", msg_ts=None):
         self.prefix = prefix
         self.suffix = suffix
         self.channel = channel
         self.slack = Slacker(token).client
+        self.msg_ts = msg_ts
 
     def new(self, total=100):
         """
@@ -21,7 +22,11 @@ class SlackProgress(object):
         params:
             - total(int): total number of items
         """
-        res = self.slack.chat_postMessage(channel=self.channel, text=self._makebar(0), as_user=True)
+        if self.msg_ts:
+            res = self.slack.chat_postMessage(channel=self.channel, text=self._makebar(0), thread_ts=self.msg_ts, as_user=True)
+        else:
+            res = self.slack.chat_postMessage(channel=self.channel, text=self._makebar(0), as_user=True)
+
         bar = ProgressBar(self, total)
         bar.msg_ts = res['ts']
         bar.channel_id = res['channel']
@@ -55,12 +60,14 @@ class ProgressBar(object):
     msg_ts = None
     channel_id = None
 
-    def __init__(self, sp, total):
+    def __init__(self, sp, total, msg_ts=None):
         self._sp = sp
         self._pos = 0
         self._done = 0
         self.total = total
         self._msg_log = []
+        if msg_ts:
+            self.msg_ts = msg_ts
 
     @property
     def done(self):
