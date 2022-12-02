@@ -110,7 +110,8 @@ def main(args: argparse.Namespace) -> None:
 
             phase_type, phase_status = current_build_phase["phaseType"], current_build_phase["phaseStatus"]
             log_message = f"Build's Phase: {phase_type}, PhaseStatus=*{phase_status}*"
-            current_percentage_int += round(100/11, 1)
+            current_percentage_int += 100/11
+            current_percentage_int = round(current_percentage_int, 1)
             pbar.pos = current_percentage_int
             pbar.log(log_message)
             build_phases_updated_in_slack_mapping[_build_phase] = True
