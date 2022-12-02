@@ -241,7 +241,7 @@ if __name__ == "__main__":
     parser.add_argument('--deployment_group_name', type=str)
     parser.add_argument('--deployment_id', default="", type=str)
 
-    parser.add_argument('--commit_id', type=str)
+    parser.add_argument('--commit_id', default="", type=str)
     parser.add_argument('--ssh_git_repo_url', type=str)
     parser.add_argument('--git_repo_branch', type=str)
     parser.add_argument('--repository_name', type=str)
