@@ -24,8 +24,9 @@ def main(args: argparse.Namespace) -> None:
     repository_name = args.repository_name
 
     if not commit_id:
-        commit_id = subprocess.Popen(f"echo -n \"$(git ls-remote {ssh_git_repo_url} | grep refs/heads/{git_repo_branch} | cut -f 1)\"", shell=True, stdout=subprocess.PIPE).stdout.read()
+        commit_id = subprocess.Popen(f"echo \"$(git ls-remote {ssh_git_repo_url} | grep refs/heads/{git_repo_branch} | cut -f 1)\"", shell=True, stdout=subprocess.PIPE).stdout.read()
         commit_id = commit_id.decode("utf-8")
+        commit_id = commit_id.strip('\n')
 
     codedeploy_client = boto3.client('codedeploy')
 
